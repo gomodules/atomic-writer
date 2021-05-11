@@ -227,7 +227,7 @@ func TestPathsToRemove(t *testing.T) {
 		defer os.RemoveAll(targetDir)
 
 		writer := &AtomicWriter{targetDir: targetDir, logContext: "-test-"}
-		err = writer.Write(tc.payload1)
+		_, err = writer.Write(tc.payload1)
 		if err != nil {
 			t.Errorf("%v: unexpected error writing: %v", tc.name, err)
 			continue
@@ -395,7 +395,7 @@ IAAAAAAAsDyZDwU=`
 		defer os.RemoveAll(targetDir)
 
 		writer := &AtomicWriter{targetDir: targetDir, logContext: "-test-"}
-		err = writer.Write(tc.payload)
+		_, err = writer.Write(tc.payload)
 		if err != nil && tc.success {
 			t.Errorf("%v: unexpected error writing payload: %v", tc.name, err)
 			continue
@@ -572,7 +572,7 @@ func TestUpdate(t *testing.T) {
 
 		writer := &AtomicWriter{targetDir: targetDir, logContext: "-test-"}
 
-		err = writer.Write(tc.first)
+		_, err = writer.Write(tc.first)
 		if err != nil {
 			t.Errorf("%v: unexpected error writing: %v", tc.name, err)
 			continue
@@ -583,7 +583,7 @@ func TestUpdate(t *testing.T) {
 			continue
 		}
 
-		err = writer.Write(tc.next)
+		_, err = writer.Write(tc.next)
 		if err != nil {
 			if tc.shouldWrite {
 				t.Errorf("%v: unexpected error writing: %v", tc.name, err)

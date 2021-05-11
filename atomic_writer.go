@@ -117,12 +117,12 @@ const (
 //  9.  The new data directory symlink is renamed to the data directory; rename is atomic
 // 10.  Old paths are removed from the user-visible portion of the target directory
 // 11.  The previous timestamped directory is removed, if it exists
-func (w *AtomicWriter) Write(payload map[string]FileProjection) error {
+func (w *AtomicWriter) Write(payload map[string]FileProjection) (bool, error) {
 	// (1)
 	cleanPayload, err := validatePayload(payload)
 	if err != nil {
 		klog.Errorf("%s: invalid payload: %v", w.logContext, err)
-		return err
+		return false, err
 	}
 
 	// (2)
@@ -131,7 +131,7 @@ func (w *AtomicWriter) Write(payload map[string]FileProjection) error {
 	if err != nil {
 		if !os.IsNotExist(err) {
 			klog.Errorf("%s: error reading link for data directory: %v", w.logContext, err)
-			return err
+			return false, err
 		}
 		// although Readlink() returns "" on err, don't be fragile by relying on it (since it's not specified in docs)
 		// empty oldTsDir indicates that it didn't exist
@@ -146,16 +146,16 @@ func (w *AtomicWriter) Write(payload map[string]FileProjection) error {
 		pathsToRemove, err = w.pathsToRemove(cleanPayload, oldTsPath)
 		if err != nil {
 			klog.Errorf("%s: error determining user-visible files to remove: %v", w.logContext, err)
-			return err
+			return false, err
 		}
 
 		// (4)
 		if should, err := shouldWritePayload(cleanPayload, oldTsPath); err != nil {
 			klog.Errorf("%s: error determining whether payload should be written to disk: %v", w.logContext, err)
-			return err
+			return false, err
 		} else if !should && len(pathsToRemove) == 0 {
 			klog.V(4).Infof("%s: no update required for target directory %v", w.logContext, w.targetDir)
-			return nil
+			return false, nil
 		} else {
 			klog.V(4).Infof("%s: write required for target directory %v", w.logContext, w.targetDir)
 		}
@@ -165,21 +165,21 @@ func (w *AtomicWriter) Write(payload map[string]FileProjection) error {
 	tsDir, err := w.newTimestampDir()
 	if err != nil {
 		klog.V(4).Infof("%s: error creating new ts data directory: %v", w.logContext, err)
-		return err
+		return false, err
 	}
 	tsDirName := filepath.Base(tsDir)
 
 	// (6)
 	if err = w.writePayloadToDir(cleanPayload, tsDir); err != nil {
 		klog.Errorf("%s: error writing payload to ts data directory %s: %v", w.logContext, tsDir, err)
-		return err
+		return false, err
 	}
 	klog.V(4).Infof("%s: performed write of new data to ts data directory: %s", w.logContext, tsDir)
 
 	// (7)
 	if err = w.createUserVisibleFiles(cleanPayload); err != nil {
 		klog.Errorf("%s: error creating visible symlinks in %s: %v", w.logContext, w.targetDir, err)
-		return err
+		return false, err
 	}
 
 	// (8)
@@ -187,7 +187,7 @@ func (w *AtomicWriter) Write(payload map[string]FileProjection) error {
 	if err = os.Symlink(tsDirName, newDataDirPath); err != nil {
 		os.RemoveAll(tsDir)
 		klog.Errorf("%s: error creating symbolic link for atomic update: %v", w.logContext, err)
-		return err
+		return false, err
 	}
 
 	// (9)
@@ -202,24 +202,24 @@ func (w *AtomicWriter) Write(payload map[string]FileProjection) error {
 		os.Remove(newDataDirPath)
 		os.RemoveAll(tsDir)
 		klog.Errorf("%s: error renaming symbolic link for data directory %s: %v", w.logContext, newDataDirPath, err)
-		return err
+		return false, err
 	}
 
 	// (10)
 	if err = w.removeUserVisiblePaths(pathsToRemove); err != nil {
 		klog.Errorf("%s: error removing old visible symlinks: %v", w.logContext, err)
-		return err
+		return false, err
 	}
 
 	// (11)
 	if len(oldTsDir) > 0 {
 		if err = os.RemoveAll(oldTsPath); err != nil {
 			klog.Errorf("%s: error removing old data directory %s: %v", w.logContext, oldTsDir, err)
-			return err
+			return false, err
 		}
 	}
 
-	return nil
+	return true, nil
 }
 
 // validatePayload returns an error if any path in the payload returns a copy of the payload with the paths cleaned.
