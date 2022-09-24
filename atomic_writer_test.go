@@ -763,7 +763,7 @@ func checkVolumeContents(targetDir, tcName string, payload map[string]FileProjec
 			return nil
 		}
 
-		content, err := ioutil.ReadFile(path)
+		content, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
@@ -988,7 +988,7 @@ func TestCreateUserVisibleFiles(t *testing.T) {
 // deleted with a call to "os.RemoveAll(...)".
 // In case of error, it'll return an empty string and the error.
 func MkTmpdir(prefix string) (string, error) {
-	tmpDir, err := ioutil.TempDir(os.TempDir(), prefix)
+	tmpDir, err := os.MkdirTemp(os.TempDir(), prefix)
 	if err != nil {
 		return "", err
 	}
