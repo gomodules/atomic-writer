@@ -19,7 +19,6 @@ package atomic_writer
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
